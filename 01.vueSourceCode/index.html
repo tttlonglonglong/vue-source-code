@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Index</title>
+</head>
+
+<body>
+  Index-jello
+  <div id="app"></div>
+  <script src="./dist/umd/vue.js"></script>
+
+  <script>
+    // console.log('Vue---->', Vue)
+    // options: API 通过一个选项进行配置(会有很多问题)
+    let vm = new Vue({
+      el: '#app',
+      data() {
+        // return { a: { a: { a: 1 } } }
+        // return { a: [1, 2, 3] }
+        return { arr: [{ a: 1 }] }
+      },
+      template: '',
+      watch: '',
+      computed: ''
+    })
+    console.log('vm.$options', vm.$options, 'vm._data', vm._data.arr[0])
+    // 默认弄个数据会递归去用defineproperty进行拦截，性能差 --> proxy
+    // console.log(vm._data.a.a) // 获取了俩次a的值
+    // vm._data.a = { b: 1 };
+    // vm._data.a.b = 100;
+    // 观测的如果是数组的索引，开发功能时很少对数组索引进行操作，为了性能考虑不对数组进行拦截(数组数据量太大)
+    // 操作数组一般用push pop shift方法， 这些方法会改变原数组，拦截这些可以改变数组的方法的操作，当调用这些方法的时候，再通知数据变化了
+    // 很少有这样的操作，arr[997] = 100
+    // console.log(vm._data.a.push(456), "push", vm._data.a)
+    // console.log(vm._data.a.concat(456), "concat", vm._data.a)
+    // vm._data.arr[0].a = 100;
+    // vm._data.arr.push({ b: 1 });
+    // vm._data.arr[1].b = 100;
+    console.log('vm.arr', vm.arr)
+    vm.arr = 100
+
+  </script>
+</body>
+
+</html>
