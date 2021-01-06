@@ -1,0 +1,86 @@
+#! /usr/bin/env node
+
+console.log('is-cli～～')
+
+// 1.配置可执行命令 commander
+const program = require('commander')
+const chalk = require('chalk')
+
+// 核心功能：1.创建项目 2.更改配置文件 3.ui界面 @vue/ui
+
+// 清理参数
+const clearArgs = (cmd) => { // {force: true}
+  const args = {}
+  cmd.options.forEach(option => {
+    const key = option.long.slice(2) || option.sort
+    // 当前命令里 force: true 说明传了--force
+    if (cmd[key]) args[key] = cmd[key]
+  });
+
+  return args
+}
+
+
+program.usage(`<command> [options]`)
+
+// 获取参数：重名：强制创建
+program
+  .command(`create <app-name>`)
+  .description('create a new project')
+  .option('-f, --force', 'overwrite target directory if it exists')
+  .action((name, cmd) => {
+
+    // 拿到创建时传入的选项，提取cmd中的属性(传入的参数)
+    // console.log(name, clearArgs(cmd))
+
+    // 调用create 模块实现
+    require('../lib/create')(name, clearArgs(cmd))
+
+  })
+
+// vue config --get a
+// vue config --set a 1 ==> 配置文件
+// vue config --delete
+// npm config: npm config set/get/edit/delete/list
+// <>:尖括号表示参数，[]: 表示命令后面接了一个参数
+program
+  .command('config [value]')
+  .description('inspect and modify the config')
+  .option('-g, --get <path>', 'get value from option')
+  .option('-s, --set <path> <value>')
+  .option('-d, --delete <path>', 'delete option from config') // 长短命令都接收参数
+  .action((value, cmd) => {
+    // 调用config模块实现
+    // console.log("cmd", cmd)
+    console.log(value, clearArgs(cmd))
+  })
+
+program
+  .command('ui')
+  .description('start and open island-cli-ui')
+  .option('-p, --port <port>', 'Port used for the UI Server')
+  .action((cmd) => {
+    // 调用ui模块实现
+    console.log('ui', clearArgs(cmd))
+  })
+
+
+
+program
+  .version(`is-cli@${require('../package.json').version}`)
+// .usage(` <command> [option]`) // 单独声明
+
+// 用户打印帮助文档的时候
+program.on(`--help`, function () {
+  console.log()
+  console.log(`Run ${chalk.cyan(`is-cli <command> --help`)} show details`)
+  console.log()
+})
+
+// 解析用户传执行命令传入的参数
+program.parse(process.argv) // 解析用户执行命令时传入的参数
+
+// 2.实现脚手架，先做一个命令交互的功能  inquirer
+// 3.将模板下载下来  download-git-repo
+// 4.根据用户的选择动态的生成内容 metalsmith
+

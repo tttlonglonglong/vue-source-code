@@ -1,0 +1,25 @@
+{
+  "name": "is-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "is": "./bin/is",
+    "is-cli": "./bin/is"
+  },
+  "scripts": {
+    "test": "is",
+    "is": "is-cli"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.21.0",
+    "chalk": "^4.1.0",
+    "commander": "^6.2.0",
+    "fs-extra": "^9.0.1",
+    "inquirer": "^7.3.3",
+    "ora": "^5.1.0"
+  }
+}
