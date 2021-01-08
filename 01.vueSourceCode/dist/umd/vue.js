@@ -575,8 +575,47 @@
     return render;
   }
 
+  // 将虚拟节点转换成真实节点
+  function patch(oldVnode, vnode) {
+    console.log('oldVnode', oldVnode, 'vnode', vnode);
+    var el = createElm(vnode); // 根据当前虚拟节点创建真实dom
+
+    var parentElm = oldVnode.parentNode; // 获取老的app的父亲 =》 body
+
+    parentElm.insertBefore(el, oldVnode.nextSibling); // 当前的真实元素插入到app的后面
+
+    parentElm.removeChild(oldVnode); // 删除老节点
+  }
+
+  function createElm(vnode) {
+    var tag = vnode.tag,
+        children = vnode.children,
+        key = vnode.key,
+        data = vnode.data,
+        text = vnode.text;
+
+    if (typeof tag == 'string') {
+      // 创建元素 放到vnode.el上
+      // 如果有标签说明是一个元素
+      vnode.el = document.createElement(tag); // 遍历儿子，将儿子渲染后的结果扔到父亲中
+
+      children.forEach(function (child) {
+        vnode.el.appendChild(createElm(child));
+      });
+    } else {
+      // 创建文本 放到vnode.el 上
+      vnode.el = document.createTextNode(text);
+    }
+
+    return vnode.el;
+  } // vue的渲染流程 =》 先初始化数据 =》将模板逆行编译 =》 render函数 =》 生成虚拟节点 =》 生成真实dom =》 更新到页面
+
   function lifecycleMixin(Vue) {
-    Vue.prototype._update = function (vnode) {};
+    Vue.prototype._update = function (vnode) {
+      console.log('lifecycle---_update', vnode);
+      var vm = this;
+      patch(vm.$el, vnode);
+    };
   }
   function mountComponent(vm, el) {
     // 调用render方法去渲染 el属性
@@ -605,7 +644,8 @@
       // 挂载操作
       var vm = this;
       var options = vm.$options;
-      el = document.querySelector(el); // debugger
+      el = document.querySelector(el);
+      vm.$el = el; // debugger
 
       if (!options.render) {
         // 没render 将template转化成render方法, render方法优先级比template更高

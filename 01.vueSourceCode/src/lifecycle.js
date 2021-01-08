@@ -1,8 +1,10 @@
-import Vue from ".";
+import { patch } from "./vdom/patch";
 
 export function lifecycleMixin(Vue) {
   Vue.prototype._update = function (vnode) {
-
+    console.log('lifecycle---_update', vnode)
+    const vm = this
+    patch(vm.$el, vnode)
   }
 }
 

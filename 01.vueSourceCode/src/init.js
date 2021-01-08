@@ -26,6 +26,8 @@ export function initMixin(Vue) {
     const vm = this;
     const options = vm.$options
     el = document.querySelector(el)
+    vm.$el = el
+
     // debugger
     if (!options.render) {
       // 没render 将template转化成render方法, render方法优先级比template更高
