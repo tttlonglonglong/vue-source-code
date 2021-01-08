@@ -42,6 +42,62 @@
     return Constructor;
   }
 
+  function _slicedToArray(arr, i) {
+    return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
+  }
+
+  function _arrayWithHoles(arr) {
+    if (Array.isArray(arr)) return arr;
+  }
+
+  function _iterableToArrayLimit(arr, i) {
+    if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return;
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+    var _e = undefined;
+
+    try {
+      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"] != null) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  function _unsupportedIterableToArray(o, minLen) {
+    if (!o) return;
+    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+    var n = Object.prototype.toString.call(o).slice(8, -1);
+    if (n === "Object" && o.constructor) n = o.constructor.name;
+    if (n === "Map" || n === "Set") return Array.from(o);
+    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+  }
+
+  function _arrayLikeToArray(arr, len) {
+    if (len == null || len > arr.length) len = arr.length;
+
+    for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+
+  function _nonIterableRest() {
+    throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
   var oldArrayProtoMethods = Array.prototype; // 继承一下  arrayMethods.__proto__ = oldArrayProtoMethods
 
   var arrayMethods = Object.create(oldArrayProtoMethods); // 7个改变数组本身状态的方法
@@ -220,17 +276,6 @@
     observe(data);
   }
 
-  // <div>hello {{name}} <span>world</span></div>
-  // let html = {
-  //   tag: 'div',
-  //   parent: null,
-  //   type: 1,
-  //   attrs: [],
-  //   children: [
-  //     { tag: null, parent: '父div', attrs: [], text: 'hello {{name}}' },
-  //     { tag: 'span', parent: '父div', attrs: [], text: 'world' },
-  //   ]
-  // }
   // src/core/util/lang.js
   var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/; // src/compiler/parser/html-parser.js
   // Regular Expressions for parsing tags and attributes
@@ -246,7 +291,6 @@
   var startTagClose = /^\s*(\/?)>/; // 匹配 > 标签 或者/> <div> <br/> 开始标签的结尾部分。如 <div class="className" ></div>，匹配的是 ' >'
 
   var endTag = new RegExp("^<\\/".concat(qnameCapture, "[^>]*>")); // '</div><p></p>' 匹配结果为 </div>
-
   function parseHTML(html) {
     // 数据结构树 树、栈
     function createASTElement(tagName, attrs) {
@@ -272,7 +316,7 @@
     // 解析开始标签,并校验标签是否符合预期 <div><span></span></div> [div, span]
 
     function start(tagName, attrs) {
-      console.log('开始标签', 'tagName', tagName, 'attrs', attrs);
+      // console.log('开始标签', 'tagName', tagName, 'attrs', attrs)
       var element = createASTElement(tagName, attrs);
 
       if (!root) {
@@ -286,8 +330,8 @@
 
 
     function end(tagName) {
-      console.log('结束标签-tagName', tagName); // 在结尾标签处创建父子关系
-
+      // console.log('结束标签-tagName', tagName)
+      // 在结尾标签处创建父子关系
       var element = stack.pop(); // 取出栈中的最后一个
       // <div><p></p> hello </div> [div, p] currentParent=p, 取出p后，currentParent就是div
 
@@ -302,7 +346,7 @@
 
 
     function chars(text) {
-      console.log('解析文本-text', text, "currentParent", currentParent);
+      // console.log('解析文本-text', text, "currentParent", currentParent)
       text = text.replace(/\s/g, ''); // 去空格
 
       if (text) {
@@ -404,6 +448,107 @@
     return root;
   }
 
+  // 编写: <div id="app" style="color: red"> hello {{name}} <span>hello</span></div>
+  // 结果: render(){ return _c('div', {id: 'app', style:{color: 'red'}}), _v('hello'+_s(name)), _c('span', null, _v('hello'))}
+  var defaultTagRE = /\{\{((?:.|\n)+?)\}\}/g; // 匹配双大括号 {{  }}
+  // 语法层面的转义
+  // 将属性转换成key：value的形式
+
+  function genProps(attrs) {
+    // id="app" / style="color:'red';fontSize:12px"
+    console.log('attrs--->', attrs);
+    var str = '';
+
+    for (var i = 0; i < attrs.length; i++) {
+      var attr = attrs[i];
+
+      if (attr.name === "style") {
+        (function () {
+          var obj = {}; // 对style上的样式进行特殊处理
+
+          attr.value.split(';').forEach(function (item) {
+            var _item$split = item.split(':'),
+                _item$split2 = _slicedToArray(_item$split, 2),
+                key = _item$split2[0],
+                value = _item$split2[1];
+
+            obj[key] = value;
+          });
+          attr.value = obj;
+        })();
+      }
+
+      str += "".concat(attr.name, ":").concat(JSON.stringify(attr.value), ",");
+    } // 上面拼key-value的时候，会多出一个逗号
+
+
+    return "{".concat(str.slice(0, -1), "}");
+  }
+
+  function gen(node) {
+    // 节点可能是文本，可能是标签
+    if (node.type == 1) {
+      return generate(node); // 生成元素节点的字符串
+    } else {
+      // 如果是文本， 将当前节点的文本拿出来
+      var text = node.text; // 获取文本
+      // 如果是普通文本，不带{{}}
+
+      if (!defaultTagRE.test(text)) {
+        // 1._v('hello') => _v('hello')
+        return "_v(".concat(JSON.stringify(text), ")"); // 每次循环匹配代码之前，都要将正则的lastIndex置为0
+      } // 2._v('hello {{name}} world {{msg}} aa') => _v('hello' + _s(name) + 'world' + _s(msg))
+
+
+      var tokens = []; // 存放每一段的代码
+
+      var lastIndex = defaultTagRE.lastIndex = 0; // 如果正则是全局模式 需要每次前置为0
+
+      var match, index; // 每次匹配到的结果
+      // 捕获 “{{name}}”
+
+      while (match = defaultTagRE.exec(text)) {
+        index = match.index; // 保存匹配到的索引
+
+        if (index > lastIndex) {
+          // 当前是普通文班
+          tokens.push(JSON.stringify(text.slice(lastIndex, index)));
+        } // 当前是'{{name}}',放入捕获到的变量名
+
+
+        tokens.push("_s(".concat(match[1].trim(), ")"));
+        lastIndex = index + match[0].length;
+      }
+
+      if (lastIndex < text.length) {
+        tokens.push(JSON.stringify(text.slice(lastIndex))); // 示例最后的"aa"
+      }
+
+      return "_v(".concat(tokens.join('+'), ")"); // 2._v('hello {{name}} world {{msg}} aa') => _v('hello' + _s(name) + 'world' + _s(msg))
+    }
+  } // 根据当前元素的儿子生成孩子
+
+
+  function getChildren(el) {
+    var children = el.children; // 儿子的生成
+
+    if (children) {
+      // 将所有转化后的儿子，用逗号拼接起来
+      return children.map(function (child) {
+        return gen(child);
+      }).join(',');
+    }
+  }
+
+  function generate(el) {
+    var children = getChildren(el); // 创建标签和标签的属性，将儿子拼到后面
+
+    var code = "_c('".concat(el.tag, "', ").concat(el.attrs.length ? "".concat(genProps(el.attrs)) : 'undefine').concat(children ? ",".concat(children) : '', ")");
+    return code;
+  }
+
+  // <div>hello {{name}} <span>world</span></div>
+
   function compileToFunctions(template) {
     // 将html模板 ==》 render函数
     // ast语法树：用一颗树描述html结构，再把这样一个结构转换成js语法，最后生成对应的代码字符串 
@@ -412,9 +557,22 @@
     // <div id="a"></div> ===> {attrs:[{id:'a'}], tag:'div', children:[]}
     // 1.需要将html代码转化成"ast"语法树 可以用ast树来描述语言本身，
     // 前端必须要掌握的数据结构（树）
-    var ast = parseHTML(template); // 2.通过这颗树 重新生成代码
+    // 测试 render 函数的节点
+    template = "<div id=\"app\" style=\"color: red\"> hello {{name}} {{msg}} <span>hello</span></div>";
+    var ast = parseHTML(template);
+    console.log('compileToFunctions', 'template', template, 'ast', ast); // 2.优化静态节点
+    // 3.通过这颗树 重新生成代码
+    // <div id="app" style="color: red"> hello {{name}} <span>hello</span></div>
+    // render(){ return _c('div', {id: 'app', style:{color: 'red'}}), _v('hello'+_s(name)), _c('span', null, _v('hello'))}
 
-    console.log('compileToFunctions', 'template', template, 'ast', ast);
+    var code = generate(ast);
+    console.log('generate-->code', code); // 4.将字符串变成函数 限制取值范围 通过with来进行取值 稍后调用render函数就可以通过改变this 让这个函数内部取到结果
+
+    var render = new Function("with(this){return ".concat(code, "}")); // let obj = { a: 1, b: 2 }
+    // with (obj) { console.log(a, b) }
+
+    console.log('render-->', render);
+    return render;
   }
 
   function initMixin(Vue) {
