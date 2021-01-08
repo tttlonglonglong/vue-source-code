@@ -26,7 +26,7 @@ export function compileToFunctions(template) {
   // 测试 render 函数的节点
   template = `<div id="app" style="color: red"> hello {{name}} {{msg}} <span>hello</span></div>`
   let ast = parseHTML(template)
-  console.log('compileToFunctions', 'template', template, 'ast', ast)
+  // console.log('compileToFunctions', 'template', template, 'ast', ast)
 
   // 2.优化静态节点
 
@@ -34,13 +34,13 @@ export function compileToFunctions(template) {
   // <div id="app" style="color: red"> hello {{name}} <span>hello</span></div>
   // render(){ return _c('div', {id: 'app', style:{color: 'red'}}), _v('hello'+_s(name)), _c('span', null, _v('hello'))}
   let code = generate(ast)
-  console.log('generate-->code', code)
+  // console.log('generate-->code', code)
 
   // 4.将字符串变成函数 限制取值范围 通过with来进行取值 稍后调用render函数就可以通过改变this 让这个函数内部取到结果
   let render = new Function(`with(this){return ${code}}`)
   // let obj = { a: 1, b: 2 }
   // with (obj) { console.log(a, b) }
-  console.log('render-->', render)
+  // console.log('render-->', render)
 
   return render
 

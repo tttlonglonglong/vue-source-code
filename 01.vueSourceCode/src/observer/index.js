@@ -42,11 +42,11 @@ function defineReactive(data, key, value) {
 
   Object.defineProperty(data, key, {
     get() {
-      console.log("用户获取值", key, value)
+      // console.log("用户获取值", key, value)
       return value
     },
     set(newValue) {
-      console.log("用户设置值", key, value)
+      // console.log("用户设置值", key, value)
       if (newValue == value) return;
       // data[key] = newValue; // 这样写会死循环，利用闭包就好了
       observe(newValue); // 如果用户将值改为对象，继续监控

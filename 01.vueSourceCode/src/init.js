@@ -1,6 +1,7 @@
 import Vue from ".";
 import { initState } from "./state";
 import { compileToFunctions } from "./compiler/index";
+import { mountComponent } from "./lifecycle";
 
 // 扩展初始化功能
 export function initMixin(Vue) {
@@ -27,7 +28,7 @@ export function initMixin(Vue) {
     el = document.querySelector(el)
     // debugger
     if (!options.render) {
-      // 没render 将template转化成render方法
+      // 没render 将template转化成render方法, render方法优先级比template更高
       let template = options.template
       if (!template && el) {
         template = el.outerHTML
@@ -37,8 +38,10 @@ export function initMixin(Vue) {
       const render = compileToFunctions(template)
       options.render = render
     }
+    // 最终渲染时都是options.render方法
     console.log('最终渲染时都是options.render方法', options.render)
-    // render方法优先级比template更高
+    // 需要挂载这个组件
+    mountComponent(vm, el)
     console.log('el', el)
   }
 }

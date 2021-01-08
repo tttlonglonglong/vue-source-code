@@ -74,7 +74,7 @@ export function generate(el) {
   let children = getChildren(el);
   // 创建标签和标签的属性，将儿子拼到后面
   let code = `_c('${el.tag}', ${
-    el.attrs.length ? `${genProps(el.attrs)}` : 'undefine'
+    el.attrs.length ? `${genProps(el.attrs)}` : 'undefined'
     }${
     children ? `,${children}` : ''
     })`;

@@ -213,11 +213,11 @@
 
     Object.defineProperty(data, key, {
       get: function get() {
-        console.log("用户获取值", key, value);
+        // console.log("用户获取值", key, value)
         return value;
       },
       set: function set(newValue) {
-        console.log("用户设置值", key, value);
+        // console.log("用户设置值", key, value)
         if (newValue == value) return; // data[key] = newValue; // 这样写会死循环，利用闭包就好了
 
         observe(newValue); // 如果用户将值改为对象，继续监控
@@ -543,7 +543,7 @@
   function generate(el) {
     var children = getChildren(el); // 创建标签和标签的属性，将儿子拼到后面
 
-    var code = "_c('".concat(el.tag, "', ").concat(el.attrs.length ? "".concat(genProps(el.attrs)) : 'undefine').concat(children ? ",".concat(children) : '', ")");
+    var code = "_c('".concat(el.tag, "', ").concat(el.attrs.length ? "".concat(genProps(el.attrs)) : 'undefined').concat(children ? ",".concat(children) : '', ")");
     return code;
   }
 
@@ -559,20 +559,29 @@
     // 前端必须要掌握的数据结构（树）
     // 测试 render 函数的节点
     template = "<div id=\"app\" style=\"color: red\"> hello {{name}} {{msg}} <span>hello</span></div>";
-    var ast = parseHTML(template);
-    console.log('compileToFunctions', 'template', template, 'ast', ast); // 2.优化静态节点
+    var ast = parseHTML(template); // console.log('compileToFunctions', 'template', template, 'ast', ast)
+    // 2.优化静态节点
     // 3.通过这颗树 重新生成代码
     // <div id="app" style="color: red"> hello {{name}} <span>hello</span></div>
     // render(){ return _c('div', {id: 'app', style:{color: 'red'}}), _v('hello'+_s(name)), _c('span', null, _v('hello'))}
 
-    var code = generate(ast);
-    console.log('generate-->code', code); // 4.将字符串变成函数 限制取值范围 通过with来进行取值 稍后调用render函数就可以通过改变this 让这个函数内部取到结果
+    var code = generate(ast); // console.log('generate-->code', code)
+    // 4.将字符串变成函数 限制取值范围 通过with来进行取值 稍后调用render函数就可以通过改变this 让这个函数内部取到结果
 
     var render = new Function("with(this){return ".concat(code, "}")); // let obj = { a: 1, b: 2 }
     // with (obj) { console.log(a, b) }
+    // console.log('render-->', render)
 
-    console.log('render-->', render);
     return render;
+  }
+
+  function lifecycleMixin(Vue) {
+    Vue.prototype._update = function (vnode) {};
+  }
+  function mountComponent(vm, el) {
+    // 调用render方法去渲染 el属性
+    // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
+    vm._update(vm._render());
   }
 
   function initMixin(Vue) {
@@ -599,7 +608,7 @@
       el = document.querySelector(el); // debugger
 
       if (!options.render) {
-        // 没render 将template转化成render方法
+        // 没render 将template转化成render方法, render方法优先级比template更高
         var template = options.template;
 
         if (!template && el) {
@@ -610,11 +619,69 @@
 
         var render = compileToFunctions(template);
         options.render = render;
-      }
+      } // 最终渲染时都是options.render方法
 
-      console.log('最终渲染时都是options.render方法', options.render); // render方法优先级比template更高
 
+      console.log('最终渲染时都是options.render方法', options.render); // 需要挂载这个组件
+
+      mountComponent(vm);
       console.log('el', el);
+    };
+  }
+
+  function renderMixin(Vue) {
+    // 创建虚拟dom，用对象来描述dom的解构
+    Vue.prototype._c = function () {
+      // 创建虚拟dom元素
+      return createElement.apply(void 0, arguments);
+    };
+
+    Vue.prototype._s = function (val) {
+      // stringify
+      return val == null ? '' : _typeof(val) == 'object' ? JSON.stringify(val) : val;
+    };
+
+    Vue.prototype._v = function (text) {
+      // 创建虚拟dom文本元素
+      return createTextVnode(text);
+    };
+
+    Vue.prototype._render = function () {
+      // _render = render
+      var vm = this;
+      var render = vm.$options.render;
+      var vnode = render.call(vm);
+      console.log('vdom/index/_render--vnode', vnode);
+      return vnode;
+    };
+  } // _c('div', {}, 1,2,3)
+
+  function createElement(tag) {
+    var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    for (var _len = arguments.length, children = new Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+      children[_key - 2] = arguments[_key];
+    }
+
+    console.log('createElement-arguments', arguments);
+    return vnode(tag, data, data.key, children);
+  }
+
+  function createTextVnode(text) {
+    console.log('createTextVnode-arguments', arguments);
+    return vnode(undefined, undefined, undefined, undefined, text);
+  } // 用来产生虚拟dom的,ast是根据原代码转换出来的，不会有一些不存在的属性，虚拟dom可以加一些自定义属性
+
+
+  function vnode(tag, data, key, children, text) {
+    return {
+      tag: tag,
+      data: data,
+      key: key,
+      children: children,
+      text: text,
+      componentsInstance: '',
+      slot: ''
     };
   }
 
@@ -626,6 +693,9 @@
 
 
   initMixin(Vue);
+  lifecycleMixin(Vue); // 混合生命周期 渲染
+
+  renderMixin(Vue);
 
   return Vue;
 
