@@ -9,11 +9,11 @@
 
 <body>
   Index-jello
-  <div id='app'>
+  <div id='app' style="color:red">
     <div> {{arr}}</div>
     <div id="my" class="aaa" class=bbb>hello {{name}} <span>world</span></div>
     <ul>
-      <li>{{school.name}}</li>
+      <li style="color: blue">{{school.name}}</li>
       <li>{{school.age}}</li>
     </ul>
   </div>
@@ -27,7 +27,7 @@
       data() {
         return { arr: [1, 2, 3], shool: { name: 'zf', age: 10 }, name: "text", msg: "test-vnode" }
       },
-      template: "<div id='app'>hello {{name}} <span>world</span></div>",
+      // template: "<div id='app'>hello {{name}} <span>world</span></div>",
       // render(h) {
       //   // 类似react的createElement
       //   return h('div', { id: a }, 'hello')

@@ -239,7 +239,10 @@
       return data;
     }
 
-    return new Observer(data);
+    return new Observer(data); // 只观测存在的属性 data:{ a:1, b:2} vm.c = 3 vm.$set
+    // 数组中更改索引和长度，无法被监控
+    // vm.a = {a:1} // 赋值的是个对象，也会进行观测
+    // 数组的$set用splice实现，对象就是重新 defineProperty
   }
 
   function initState(vm) {
@@ -273,7 +276,7 @@
     // 数组 单独处理的
 
 
-    observe(data);
+    observe(data); // 让这个对象重新定义set 和 get，重写耗一些性能、对象里面套对象会去递归
   }
 
   // src/core/util/lang.js
@@ -558,7 +561,7 @@
     // 1.需要将html代码转化成"ast"语法树 可以用ast树来描述语言本身，
     // 前端必须要掌握的数据结构（树）
     // 测试 render 函数的节点
-    template = "<div id=\"app\" style=\"color: red\"> hello {{name}} {{msg}} <span>hello</span></div>";
+    // template = `<div id="app" style="color: red"> hello {{name}} {{msg}} <span>hello</span></div>`
     var ast = parseHTML(template); // console.log('compileToFunctions', 'template', template, 'ast', ast)
     // 2.优化静态节点
     // 3.通过这颗树 重新生成代码
@@ -577,12 +580,13 @@
 
   // 将虚拟节点转换成真实节点
   function patch(oldVnode, vnode) {
-    console.log('oldVnode', oldVnode, 'vnode', vnode);
+    console.log('oldVnode', oldVnode, 'vnode', vnode); // oldVnode => id#app vnode 我们根据模板产生的虚拟dom
+
     var el = createElm(vnode); // 根据当前虚拟节点创建真实dom
 
     var parentElm = oldVnode.parentNode; // 获取老的app的父亲 =》 body
 
-    parentElm.insertBefore(el, oldVnode.nextSibling); // 当前的真实元素插入到app的后面
+    parentElm.insertBefore(el, oldVnode.nextSibling); // 当前的真实元素插入到app老节点的后面，不是body节点的最后面
 
     parentElm.removeChild(oldVnode); // 删除老节点
   }
@@ -597,7 +601,9 @@
     if (typeof tag == 'string') {
       // 创建元素 放到vnode.el上
       // 如果有标签说明是一个元素
-      vnode.el = document.createElement(tag); // 遍历儿子，将儿子渲染后的结果扔到父亲中
+      vnode.el = document.createElement(tag); // 只有元素才有属性
+
+      updateProperties(vnode); // 遍历儿子，将儿子渲染后的结果扔到父亲中
 
       children.forEach(function (child) {
         vnode.el.appendChild(createElm(child));
@@ -609,6 +615,25 @@
 
     return vnode.el;
   } // vue的渲染流程 =》 先初始化数据 =》将模板逆行编译 =》 render函数 =》 生成虚拟节点 =》 生成真实dom =》 更新到页面
+
+
+  function updateProperties(vnode) {
+    var el = vnode.el;
+    var newProps = vnode.data || {};
+
+    for (var key in newProps) {
+      if (key == "style") {
+        // {color: red}
+        for (var styleName in newProps.style) {
+          el.style[styleName] = newProps.style[styleName];
+        }
+      } else if (key == 'class') {
+        el.className = el["class"];
+      } else {
+        el.setAttribute(key, newProps[key]);
+      }
+    }
+  }
 
   function lifecycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
@@ -636,6 +661,7 @@
       // 如果当前有el属性说明要渲染模板(el属性，等价于vm.$mount方法)
 
       if (vm.$options.el) {
+        // 挂载的逻辑
         vm.$mount(vm.$options.el);
       }
     };
@@ -654,7 +680,8 @@
         if (!template && el) {
           template = el.outerHTML;
         } // 有el、有template才做编译的操作，将模板转换成为render函数
-        // 编译原理 将模板编译成render函数
+        // 编译原理 将模板编译成render函数，template => render方法
+        // 1.处理模板变为ast树，2.标记静态节点，3.codegen=>return 字符串(把代码生成回js语法)，4.new Fucntion + with(render函数)
 
 
         var render = compileToFunctions(template);
@@ -674,7 +701,8 @@
     Vue.prototype._c = function () {
       // 创建虚拟dom元素
       return createElement.apply(void 0, arguments);
-    };
+    }; // 1.当结果是对象时，会对这个对象取值
+
 
     Vue.prototype._s = function (val) {
       // stringify
@@ -725,17 +753,20 @@
     };
   }
 
+  // 用Vue的构造函数，创建组件
+
   function Vue(options) {
     // console.log('index.js--->options', options)
-    this._init(options); // 入口方法，做初始化操作
+    this._init(options); // 组件初始化的入口，入口方法，做初始化操作
 
   } // 扩展原型
 
 
-  initMixin(Vue);
-  lifecycleMixin(Vue); // 混合生命周期 渲染
+  initMixin(Vue); // init方法
 
-  renderMixin(Vue);
+  lifecycleMixin(Vue); // 混合生命周期 _update更新渲染和组件挂载(不是vue的生命周期create那些)
+
+  renderMixin(Vue); // _render
 
   return Vue;
 

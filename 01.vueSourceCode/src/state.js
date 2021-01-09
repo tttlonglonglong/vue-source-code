@@ -35,7 +35,7 @@ function initData(vm) { // 数据的初始化操作
   }
   // 数据的劫持劫持方案 对象object.defineProperty
   // 数组 单独处理的
-  observe(data)
+  observe(data) // 让这个对象重新定义set 和 get，重写耗一些性能、对象里面套对象会去递归
 }
 function initComputed() { }
 function initWatch() { }

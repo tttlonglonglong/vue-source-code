@@ -24,7 +24,7 @@ export function compileToFunctions(template) {
 
   // 前端必须要掌握的数据结构（树）
   // 测试 render 函数的节点
-  template = `<div id="app" style="color: red"> hello {{name}} {{msg}} <span>hello</span></div>`
+  // template = `<div id="app" style="color: red"> hello {{name}} {{msg}} <span>hello</span></div>`
   let ast = parseHTML(template)
   // console.log('compileToFunctions', 'template', template, 'ast', ast)
 

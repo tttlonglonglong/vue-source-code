@@ -18,6 +18,7 @@ export function initMixin(Vue) {
     // 2. ast树解析
     // 如果当前有el属性说明要渲染模板(el属性，等价于vm.$mount方法)
     if (vm.$options.el) {
+      // 挂载的逻辑
       vm.$mount(vm.$options.el)
     }
   }
@@ -36,7 +37,8 @@ export function initMixin(Vue) {
         template = el.outerHTML
       }
       // 有el、有template才做编译的操作，将模板转换成为render函数
-      // 编译原理 将模板编译成render函数
+      // 编译原理 将模板编译成render函数，template => render方法
+      // 1.处理模板变为ast树，2.标记静态节点，3.codegen=>return 字符串(把代码生成回js语法)，4.new Fucntion + with(render函数)
       const render = compileToFunctions(template)
       options.render = render
     }

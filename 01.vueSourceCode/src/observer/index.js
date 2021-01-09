@@ -67,4 +67,9 @@ export function observe(data) {
     return data;
   }
   return new Observer(data)
+
+  // 只观测存在的属性 data:{ a:1, b:2} vm.c = 3 vm.$set
+  // 数组中更改索引和长度，无法被监控
+  // vm.a = {a:1} // 赋值的是个对象，也会进行观测
+  // 数组的$set用splice实现，对象就是重新 defineProperty
 }
