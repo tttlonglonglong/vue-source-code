@@ -160,6 +160,115 @@
 
     });
   }
+  var LIFECYCLE_HOOKS = ['beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'updated', 'beforeDestroy', 'destroyed'];
+  var strats = {};
+
+  strats.data = function (parentVal, childVal) {
+    return childVal; // 这里应该有合并data的策略
+  };
+
+  strats.computed = function (parentVal, childVal) {
+    return childVal;
+  };
+
+  strats.watch = function (parentVal, childVal) {
+    return childVal;
+  }; // 生命周期方法的合并
+
+
+  function mergeHook(parentVal, childVal) {
+    if (childVal) {
+      if (parentVal) {
+        return parentVal.concat(childVal); // 爸爸和儿子进行拼接
+      } else {
+        // 只有儿子有
+        return [childVal]; // 儿子转换成数组
+      }
+    } else {
+      return parentVal; // 儿子无，不合并了，采用父亲的
+    }
+  }
+
+  LIFECYCLE_HOOKS.forEach(function (hook) {
+    // 生命周期方法的合并
+    strats[hook] = mergeHook;
+  }); // 全局mixin是父，new Vue传的options是子
+
+  function mergeOptions() {
+    var parent = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+    var child = arguments.length > 1 ? arguments[1] : undefined;
+    // console.log('mergeOptions---parent', parent)
+    // 遍历父亲，可能是父亲有 儿子没有
+    var options = {};
+
+    for (var key in parent) {
+      // 父亲和儿子都有在这就处理了
+      console.log('mergeOptions---1', key);
+      mergeField(key);
+    } // 儿子有父亲没有 在这处理
+
+
+    for (var _key in child) {
+      // 将儿子多的赋予到父亲上
+      if (!parent.hasOwnProperty(_key)) {
+        console.log('mergeOptions---2', _key);
+        mergeField(_key);
+      }
+    }
+
+    function mergeField(key) {
+      // 合并字段
+      // console.log('mergeField', mergeField)
+      // 根据key 不同的策略来进行合并
+      // {...parent[key] }
+      if (strats[key]) {
+        // 直接调策略中的合并方法，mergeHook
+        options[key] = strats[key](parent[key], child[key]);
+      } else {
+        // 默认合并, 局部的覆盖全局的
+        options[key] = child[key];
+      }
+    }
+
+    return options;
+  }
+
+  var Dep = /*#__PURE__*/function () {
+    function Dep() {
+      _classCallCheck(this, Dep);
+
+      this.subs = [];
+    } // get： 获取值，收集依赖，所有已经使用了的属性
+
+
+    _createClass(Dep, [{
+      key: "depend",
+      value: function depend() {
+        this.subs.push(Dep.target);
+      } // set：设置值的时候
+
+    }, {
+      key: "notify",
+      value: function notify() {
+        this.subs.forEach(function (watcher) {
+          return watcher.update();
+        });
+      }
+    }]);
+
+    return Dep;
+  }();
+  Dep.target = null; // 静态属性，就一份
+
+  function pushTarget(watcher) {
+    Dep.target = watcher; // 保留watcher
+  }
+  function popTarget() {
+    Dep.target = null; // 将变量删除
+  } // 多对多的关系，一个属性有一个dep,每个属性都有一个dep，dep是用来收集watcher的
+  // dep 可以存多个watcher vm.$watch也会产生一个watch，vm.$watch('name')
+  // 一个watcher可以对应多个dep，渲染页面的watcher可以有多个属性既有name、又有age 
+  // 默认渲染的时候时候，都是渲染watcher 还可能用户定义vm.$watch('name')方法，都会存在dep里面
 
   var Observer = /*#__PURE__*/function () {
     function Observer(value) {
@@ -211,9 +320,18 @@
   function defineReactive(data, key, value) {
     observe(value); // 如果观测的对象的值也是对象，再进行观测
 
+    var dep = new Dep(); // 每个属性都有一个dep
+    // 当页面取值的时，说明这个值用来渲染了，将这个watcher和这个属性对应起来
+
     Object.defineProperty(data, key, {
       get: function get() {
         // console.log("用户获取值", key, value)
+        if (Dep.target) {
+          // target有值，说明正在渲染，让这个属性记住这个watcher
+          // 取值的时候，收集依赖
+          dep.depend();
+        }
+
         return value;
       },
       set: function set(newValue) {
@@ -222,7 +340,9 @@
 
         observe(newValue); // 如果用户将值改为对象，继续监控
 
-        value = newValue;
+        value = newValue; // 赋值的时候，依赖更新
+
+        dep.notify(); // 异步更新， 防止频繁操作
       }
     }); // console.log("defineReactive", 'data', data, 'key', key)
   }
@@ -459,7 +579,7 @@
 
   function genProps(attrs) {
     // id="app" / style="color:'red';fontSize:12px"
-    console.log('attrs--->', attrs);
+    // console.log('attrs--->', attrs)
     var str = '';
 
     for (var i = 0; i < attrs.length; i++) {
@@ -589,6 +709,8 @@
     parentElm.insertBefore(el, oldVnode.nextSibling); // 当前的真实元素插入到app老节点的后面，不是body节点的最后面
 
     parentElm.removeChild(oldVnode); // 删除老节点
+
+    return el;
   }
 
   function createElm(vnode) {
@@ -635,27 +757,106 @@
     }
   }
 
+  var id = 0;
+
+  var Watcher = /*#__PURE__*/function () {
+    // vm.$watch
+    // vm实例
+    // exprOrFn vm._update(vm._render())
+    function Watcher(vm, exprOrFn, cb, options) {
+      _classCallCheck(this, Watcher);
+
+      this.vm = vm;
+      this.exprOrFn = exprOrFn;
+      this.cb = cb;
+      this.options = options;
+      this.id = id++; // watcher的唯一标识
+
+      if (typeof exprOrFn === 'function') {
+        this.getter = exprOrFn;
+      }
+
+      this.get(); // 默认会调用get方法
+    }
+
+    _createClass(Watcher, [{
+      key: "get",
+      value: function get() {
+        // Dep.target = watcher
+        pushTarget(this); // 当前watcher实例
+
+        this.getter(); // 调用exprOrFn  渲染页面 取值(执行了get方法)  render方法 with(vm){msg}
+
+        popTarget();
+      }
+    }, {
+      key: "update",
+      value: function update() {
+        this.get(); // 重新渲染
+      }
+    }]);
+
+    return Watcher;
+  }();
+  // 找到属性--->对应的watcher，渲染watcher在lifeCycle的update的时候创建
+  // 1.先把这个渲染watcher 放到了Dep.target属性上，
+  // 2.开始渲染 取值会调用get方法，需要让这个属性的dep 存储当前的watcher
+  // 3.页面上所需要的属性都会将这个watcher存在自己的dep中
+  // 4.等会属性更新了，就重新调用渲染逻辑 通知自己存储的watcher来更新
+
   function lifecycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
       console.log('lifecycle---_update', vnode);
-      var vm = this;
-      patch(vm.$el, vnode);
+      var vm = this; // 用新创建的元素 替换掉老的vm.$el
+
+      vm.$el = patch(vm.$el, vnode);
     };
-  }
+  } // 挂载节点
+
   function mountComponent(vm, el) {
     // 调用render方法去渲染 el属性
     // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
-    vm._update(vm._render());
+    callHook(vm, 'beforeMount');
+
+    var updateComponent = function updateComponent() {
+      vm._update(vm._render());
+    }; // 这个watcher是用于渲染的 目前没有任何功能 updateComponent()
+    // 初始化就会创建watcher
+
+
+    var watcher = new Watcher(vm, updateComponent, function () {
+      callHook(vm, 'beforeUpdate');
+    }, true); // 渲染watcher 只是个名字
+    // vm._update(vm._render());
+    // 要把属性 和 watcher绑定在一起
+
+    callHook(vm, 'mounted');
+  } // callHook(vm, 'beforeCreate')
+
+  function callHook(vm, hook) {
+    var handlers = vm.$options[hook]; // vm.$options.created = [a1, a1, a3]
+
+    if (handlers) {
+      for (var i = 0; i < handlers.length; i++) {
+        handlers[i].call(vm); // 更改生命周期中的this
+      }
+    }
   }
 
   function initMixin(Vue) {
+    // 全局组件和局部组件的区别: 全局组件任何地方都能用
     Vue.prototype._init = function (options) {
-      var vm = this;
-      vm.$options = options; // 1.数据观测初始化(vue源码会先初始化事件和生命周期)
+      var vm = this; // vm.$options = mergeOptions(Vue.options, options); 
+
+      vm.$options = mergeOptions(vm.constructor.options, options); // 需要将用户自定义的options 和全局的options做合并
+
+      console.log('vm.$options', vm.$options); // 1.数据观测初始化(vue源码会先初始化事件和生命周期)
       // 初始化状态 (将数据做一个初始化的劫持，当改变数据时，应该更新视图)
       // vue组件中有很多状态 data props watch computed
 
-      initState(vm); // vue核心：响应式数据原理
+      callHook(vm, 'beforeCreate');
+      initState(vm);
+      callHook(vm, 'created'); // vue核心：响应式数据原理
       // MVVM：数据变化视图更新、视图变化影响数据(不能跳过数据更新视图)，$ref能实际直接操作dom
       // 2. ast树解析
       // 如果当前有el属性说明要渲染模板(el属性，等价于vm.$mount方法)
@@ -691,8 +892,7 @@
 
       console.log('最终渲染时都是options.render方法', options.render); // 需要挂载这个组件
 
-      mountComponent(vm);
-      console.log('el', el);
+      mountComponent(vm); // console.log('el', el)
     };
   }
 
@@ -731,12 +931,12 @@
       children[_key - 2] = arguments[_key];
     }
 
-    console.log('createElement-arguments', arguments);
+    // console.log('createElement-arguments', arguments)
     return vnode(tag, data, data.key, children);
   }
 
   function createTextVnode(text) {
-    console.log('createTextVnode-arguments', arguments);
+    // console.log('createTextVnode-arguments', arguments)
     return vnode(undefined, undefined, undefined, undefined, text);
   } // 用来产生虚拟dom的,ast是根据原代码转换出来的，不会有一些不存在的属性，虚拟dom可以加一些自定义属性
 
@@ -753,13 +953,24 @@
     };
   }
 
+  function initGlobalApi(Vue) {
+    Vue.options = {}; // Vue.components Vue.directive定义的这些属性，最终都会放在Vue.options
+
+    Vue.mixin = function (mixin) {
+      // 合并对象(先考虑生命周期，不考虑data computed watch)
+      this.options = mergeOptions(this.options, mixin); // console.log('initGlobalApi--->mixin', this.options); // this.options = {created: [a, b]}
+    }; // new 的时候需要将Vue.options 和 new 传入的options 再合并
+    // 用户 new Vue({create(){}})
+
+  }
+
   // 用Vue的构造函数，创建组件
 
   function Vue(options) {
     // console.log('index.js--->options', options)
     this._init(options); // 组件初始化的入口，入口方法，做初始化操作
 
-  } // 扩展原型
+  } // 原型方法，扩展原型
 
 
   initMixin(Vue); // init方法
@@ -767,6 +978,9 @@
   lifecycleMixin(Vue); // 混合生命周期 _update更新渲染和组件挂载(不是vue的生命周期create那些)
 
   renderMixin(Vue); // _render
+  // 静态方法 Vue.component Vue.directive Vue.extend Vue.mixin ...
+
+  initGlobalApi(Vue);
 
   return Vue;
 

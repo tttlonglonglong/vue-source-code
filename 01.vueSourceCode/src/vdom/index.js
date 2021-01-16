@@ -20,12 +20,12 @@ export function renderMixin(Vue) { // 创建虚拟dom，用对象来描述dom的
 
 // _c('div', {}, 1,2,3)
 function createElement(tag, data = {}, ...children) {
-  console.log('createElement-arguments', arguments)
+  // console.log('createElement-arguments', arguments)
   return vnode(tag, data, data.key, children)
 
 }
 function createTextVnode(text) {
-  console.log('createTextVnode-arguments', arguments)
+  // console.log('createTextVnode-arguments', arguments)
   return vnode(undefined, undefined, undefined, undefined, text)
 }
 

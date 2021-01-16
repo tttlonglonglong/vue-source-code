@@ -1,5 +1,7 @@
 import { arrayMethods } from "./array";
 import { defineProperty } from "../util.js";
+import Dep from "./dep";
+
 class Observer {
   constructor(value) {
     // 使用defineProperty 重新定义属性,
@@ -40,9 +42,16 @@ class Observer {
 function defineReactive(data, key, value) {
   observe(value); // 如果观测的对象的值也是对象，再进行观测
 
+  let dep = new Dep(); // 每个属性都有一个dep
+
+  // 当页面取值的时，说明这个值用来渲染了，将这个watcher和这个属性对应起来
   Object.defineProperty(data, key, {
     get() {
       // console.log("用户获取值", key, value)
+      if (Dep.target) { // target有值，说明正在渲染，让这个属性记住这个watcher
+        // 取值的时候，收集依赖
+        dep.depend()
+      }
       return value
     },
     set(newValue) {
@@ -51,6 +60,9 @@ function defineReactive(data, key, value) {
       // data[key] = newValue; // 这样写会死循环，利用闭包就好了
       observe(newValue); // 如果用户将值改为对象，继续监控
       value = newValue
+
+      // 赋值的时候，依赖更新
+      dep.notify() // 异步更新， 防止频繁操作
     }
   })
   // console.log("defineReactive", 'data', data, 'key', key)

@@ -7,6 +7,8 @@ export function patch(oldVnode, vnode) {
   let parentElm = oldVnode.parentNode // 获取老的app的父亲 =》 body
   parentElm.insertBefore(el, oldVnode.nextSibling) // 当前的真实元素插入到app老节点的后面，不是body节点的最后面
   parentElm.removeChild(oldVnode) // 删除老节点
+
+  return el
 }
 
 

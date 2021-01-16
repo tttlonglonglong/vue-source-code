@@ -7,7 +7,7 @@ const defaultTagRE = /\{\{((?:.|\n)+?)\}\}/g // 匹配双大括号 {{  }}
 // 语法层面的转义
 // 将属性转换成key：value的形式
 function genProps(attrs) { // id="app" / style="color:'red';fontSize:12px"
-  console.log('attrs--->', attrs)
+  // console.log('attrs--->', attrs)
   let str = ''
   for (let i = 0; i < attrs.length; i++) {
     let attr = attrs[i]
